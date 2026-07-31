@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>스피드 토끼 잡기 게임</title>
+  <script src="config.js"></script>
+  <style>
+    * { 
+      box-sizing: border-box; 
+      user-select: none; 
+      -webkit-user-select: none; 
+    }
+    body {
+      margin: 0; padding: 0; 
+      font-family: 'Pretendard', sans-serif;
+      background: #f0f4f8; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+    #game-container {
+      width: 100%; 
+      max-width: 480px; 
+      height: 95vh;
+      height: 95dvh;
+      max-height: 800px;
+      min-height: 580px;
+      background: #ffffff; 
+      position: relative; 
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+      display: flex; 
+      flex-direction: column;
+      border-radius: 16px;
+    }
+    .screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      padding: 20px; background: white; z-index: 10;
+    }
+    .hidden { display: none !important; }
+    h1 { color: #333; margin-top: 0; margin-bottom: 12px; font-size: 26px; text-align: center; }
+    p { color: #666; font-size: 13px; text-align: center; margin-bottom: 16px; line-height: 1.5; }
+    
+    input {
+      width: 85%;
+      padding: 13px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 15px;
+      outline: none;
+    }
+    input:focus { border-color: #ff4757; }
+
+    button {
+      width: 85%; padding: 13px; font-size: 16px; font-weight: bold;
+      color: white; background: #ff4757; border: none; border-radius: 12px;
+      cursor: pointer; box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+      margin-bottom: 8px;
+    }
+    button:active { transform: scale(0.96); }
+    .btn-secondary {
+      background: #70a1ff;
+      box-shadow: 0 4px 10px rgba(112, 161, 255, 0.3);
+    }
+
+    #header {
+      height: 56px; background: #2ed573; color: white; display: flex;
+      justify-content: space-between; align-items: center; padding: 0 20px;
+      font-size: 17px; font-weight: bold; z-index: 5; flex-shrink: 0;
+      transition: background 0.3s ease;
+    }
+    #header.fever-mode {
+      background: linear-gradient(90deg, #ff4757, #ffa502);
+      animation: pulse 0.5s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.9; }
+      100% { opacity: 1; transform: scale(1.01); }
+    }
+
+    #play-area { flex: 1; position: relative; background: #f8f9fa; overflow: hidden; }
+
+    /* 토끼 요소 및 벌레 움직임 스타일 */
+    .rabbit {
+      position: absolute; width: 68px; height: 68px;
+      background-size: contain; background-repeat: no-repeat; background-position: center;
+      cursor: pointer; touch-action: manipulation;
+    }
+
+    /* 벌레처럼 움직이는 모션 1 */
+    .move-type-1 {
+      animation: wiggleMove 0.6s infinite alternate ease-in-out;
+    }
+    @keyframes wiggleMove {
+      0% { transform: translate(0, 0) rotate(-10deg) scale(0.9); }
+      50% { transform: translate(25px, -15px) rotate(15deg) scale(1.1); }
+      100% { transform: translate(-20px, 20px) rotate(-15deg) scale(0.95); }
+    }
+
+    /* 벌레처럼 움직이는 모션 2 */
+    .move-type-2 {
+      animation: zigZagMove 0.8s infinite ease-in-out;
+    }
+    @keyframes zigZagMove {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(-30px, 20px) rotate(-25deg); }
+      66% { transform: translate(30px, 40px) rotate(25deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    /* 벌레처럼 움직이는 모션 3 */
+    .move-type-3 {
+      animation: crazyBug 0.4s infinite alternate linear;
+    }
+    @keyframes crazyBug {
+      0% { transform: translate(-15px, 15px) rotate(30deg) scale(1); }
+      100% { transform: translate(20px, -20px) rotate(-30deg) scale(1.15); }
+    }
+
+    .score-popup {
+      position: absolute; font-weight: bold; font-size: 24px; pointer-events: none;
+      animation: floatUp 0.5s ease-out forwards; z-index: 8;
+    }
+    .score-popup.fever-pop {
+      font-size: 30px;
+      text-shadow: 0 0 5px rgba(255,255,255,0.8);
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-30px); }
+    }
+
+    /* 랭킹 박스 */
+    .ranking-box {
+      width: 90%; max-height: 180px; overflow-y: auto; border: 1px solid #eee;
+      border-radius: 10px; padding: 8px 12px; margin-bottom: 15px; background: #fafafa;
+    }
+    .ranking-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+    .ranking-item:last-child { border-bottom: none; }
+    .rank-num { font-weight: bold; color: #ff4757; width: 30px; }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <!-- 시작 화면 -->
+  <div id="start-screen" class="screen">
+    <h1>🐰 스피드 토끼 잡기!</h1>
+    <p>
+      꿈틀대는 토끼들을 빠르게 잡아보세요!<br><br>
+      🖼️ 1번 토끼: <b>+5점</b> (느림)<br>
+      🖼️ 2번 토끼: <b>+10점</b> (보통)<br>
+      🖼️ 3번 토끼: <b>+20점</b> (광속)<br>
+      ⚠️ 4번 토끼: <b style="color:#ff4757;">-50점</b> (함정!)<br><br>
+      🔥 <b>연속 7회 성공 시 3초간 FEVER TIME (1.5배)!</b>
+    </p>
+    <input type="text" id="nickname-input" placeholder="닉네임 입력" maxlength="8">
+    <button id="start-btn">게임 시작</button>
+  </div>
+
+  <!-- 헤더 영역 -->
+  <div id="header">
+    <div id="header-status">점수: <span id="score-display">0</span></div>
+    <div>남은시간: <span id="time-display">30</span>s</div>
+  </div>
+  <div id="play-area"></div>
+
+  <!-- 결과 및 랭킹 화면 -->
+  <div id="game-over-screen" class="screen hidden">
+    <h1>게임 종료!</h1>
+    <p style="margin-bottom: 10px;"><span id="player-name-display" style="font-weight:bold;"></span>님의 최종 점수: <b id="final-score" style="font-size: 26px; color: #ff4757;">0</b>점</p>
+    
+    <button id="copy-btn" class="btn-secondary">📋 점수 복사하기</button>
+
+    <h3 style="margin: 10px 0 5px 0; font-size: 16px;">🏆 실시간 TOP 10 랭킹 🏆</h3>
+    <div class="ranking-box" id="ranking-list">랭킹 불러오는 중...</div>
+
+    <button id="restart-btn">다시 하기</button>
+  </div>
+</div>
+
+<script>
+  // config.js 불러오기
+  const BIN_ID = CONFIG.BIN_ID; 
+  const MASTER_KEY = CONFIG.MASTER_KEY; 
+
+  let score = 0;
+  let timeLeft = 30;
+  let timer = null;
+  let spawnInterval = null;
+  let nickname = '';
+
+  let comboCount = 0;
+  let isFever = false;
+  let feverTimeout = null;
+
+  const startScreen = document.getElementById('start-screen');
+  const gameOverScreen = document.getElementById('game-over-screen');
+  const nicknameInput = document.getElementById('nickname-input');
+  const startBtn = document.getElementById('start-btn');
+  const restartBtn = document.getElementById('restart-btn');
+  const copyBtn = document.getElementById('copy-btn');
+  const scoreDisplay = document.getElementById('score-display');
+  const timeDisplay = document.getElementById('time-display');
+  const playArea = document.getElementById('play-area');
+  const finalScore = document.getElementById('final-score');
+  const playerNameDisplay = document.getElementById('player-name-display');
+  const rankingList = document.getElementById('ranking-list');
+  const header = document.getElementById('header');
+  const headerStatus = document.getElementById('header-status');
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', () => {
+    gameOverScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+  });
+
+  // 점수 복사 기능
+  copyBtn.addEventListener('click', () => {
+    const textToCopy = `🐰 [스피드 토끼 잡기] ${nickname}님의 최종 점수는 ${score}점 입니다! 너도 도전해봐! 🐰`;
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(textToCopy).then(() => alert('점수가 클립보드에 복사되었습니다! 🎉'));
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = textToCopy;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('점수가 클립보드에 복사되었습니다! 🎉');
+    }
+  });
+
+  function startGame() {
+    nickname = nicknameInput.value.trim();
+    if (!nickname) {
+      alert('닉네임을 입력해주세요!');
+      return;
+    }
+
+    score = 0;
+    timeLeft = 30;
+    comboCount = 0;
+    isFever = false;
+    if (feverTimeout) clearTimeout(feverTimeout);
+
+    scoreDisplay.textContent = score;
+    timeDisplay.textContent = timeLeft;
+    playArea.innerHTML = '';
+    header.classList.remove('fever-mode');
+    headerStatus.innerHTML = `점수: <span id="score-display">${score}</span>`;
+
+    startScreen.classList.add('hidden');
+
+    timer = setInterval(() => {
+      timeLeft--;
+      timeDisplay.textContent = timeLeft;
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+
+    spawnInterval = setInterval(spawnRabbit, 400);
+  }
+
+  function triggerFever() {
+    isFever = true;
+    comboCount = 0;
+    header.classList.add('fever-mode');
+    headerStatus.innerHTML = `🔥 FEVER! <span id="score-display">${score}</span>`;
+
+    if (feverTimeout) clearTimeout(feverTimeout);
+
+    feverTimeout = setTimeout(() => {
+      isFever = false;
+      header.classList.remove('fever-mode');
+      headerStatus.innerHTML = `점수: <span id="score-display">${score}</span>`;
+    }, 3000);
+  }
+
+  function spawnRabbit() {
+    const rabbit = document.createElement('div');
+    rabbit.classList.add('rabbit');
+
+    // 벌레처럼 무작위로 움직이는 애니메이션 적용
+    const moveTypes = ['move-type-1', 'move-type-2', 'move-type-3'];
+    const randomMove = moveTypes[Math.floor(Math.random() * moveTypes.length)];
+    rabbit.classList.add(randomMove);
+
+    const areaWidth = playArea.clientWidth - 90;
+    const areaHeight = playArea.clientHeight - 90;
+
+    rabbit.style.left = `${20 + Math.random() * areaWidth}px`;
+    rabbit.style.top = `${20 + Math.random() * areaHeight}px`;
+
+    const typeRand = Math.random();
+    let imageSrc, speed, basePoints, color;
+
+    if (typeRand < 0.25) { 
+      imageSrc = 'rabbit1.png';
+      speed = 1.2; 
+      basePoints = 5; 
+      color = '#2ed573'; 
+    } else if (typeRand < 0.55) { 
+      imageSrc = 'rabbit2.png';
+      speed = 0.8;  
+      basePoints = 10; 
+      color = '#ffa502'; 
+    } else if (typeRand < 0.80) { 
+      imageSrc = 'rabbit3.png';
+      speed = 0.45; 
+      basePoints = 20; 
+      color = '#ff4757'; 
+    } else {
+      imageSrc = 'rabbit4.png';
+      speed = [0.45, 0.8, 1.2][Math.floor(Math.random() * 3)];
+      basePoints = -50;
+      color = '#2f3542';
+    }
+
+    rabbit.style.backgroundImage = `url('${imageSrc}')`;
+    playArea.appendChild(rabbit);
+
+    const removeTimeout = setTimeout(() => {
+      if (rabbit.parentNode) rabbit.remove();
+    }, speed * 1000);
+
+    rabbit.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+
+      let finalGainedPoints = basePoints;
+
+      if (basePoints > 0) {
+        if (isFever) {
+          finalGainedPoints = basePoints * 1.5;
+        } else {
+          comboCount++;
+          if (comboCount >= 7) {
+            triggerFever();
+          }
+        }
+      } else {
+        comboCount = 0; // 함정 터치 시 콤보 리셋 (-50점은 1.5배 안 됨)
+      }
+
+      score += finalGainedPoints;
+      const scoreElem = document.getElementById('score-display');
+      if (scoreElem) scoreElem.textContent = score;
+
+      const popupText = finalGainedPoints > 0 ? `+${finalGainedPoints}` : `${finalGainedPoints}`;
+      showPopup(e.clientX, e.clientY, popupText, color, isFever && basePoints > 0);
+
+      clearTimeout(removeTimeout);
+      rabbit.remove();
+    });
+  }
+
+  function showPopup(x, y, text, color, isFeverPop) {
+    const rect = playArea.getBoundingClientRect();
+    const popup = document.createElement('div');
+    popup.classList.add('score-popup');
+    if (isFeverPop) popup.classList.add('fever-pop');
+
+    popup.textContent = text;
+    popup.style.color = color;
+    popup.style.left = `${x - rect.left}px`;
+    popup.style.top = `${y - rect.top}px`;
+
+    playArea.appendChild(popup);
+    setTimeout(() => popup.remove(), 500);
+  }
+
+  async function endGame() {
+    clearInterval(timer);
+    clearInterval(spawnInterval);
+    if (feverTimeout) clearTimeout(feverTimeout);
+
+    playArea.innerHTML = '';
+    header.classList.remove('fever-mode');
+
+    finalScore.textContent = score;
+    playerNameDisplay.textContent = nickname;
+
+    gameOverScreen.classList.remove('hidden');
+    rankingList.innerHTML = '랭킹 동기화 중...';
+
+    await updateGlobalRanking(nickname, score);
+  }
+
+  async function updateGlobalRanking(name, newScore) {
+    try {
+      const getRes = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+        headers: { 'X-Master-Key': MASTER_KEY }
+      });
+      const getData = await getRes.json();
+      let rankings = getData.record || [];
+
+      rankings.push({ name, score: newScore });
+      rankings.sort((a, b) => b.score - a.score);
+      rankings = rankings.slice(0, 10);
+
+      await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': MASTER_KEY
+        },
+        body: JSON.stringify(rankings)
+      });
+
+      renderRanking(rankings);
+
+    } catch (err) {
+      console.error(err);
+      rankingList.innerHTML = '랭킹 불러오기 실패 😢';
+    }
+  }
+
+  function renderRanking(rankings) {
+    rankingList.innerHTML = rankings.map((item, index) => `
+      <div class="ranking-item">
+        <span class="rank-num">${index + 1}위</span>
+        <span>${item.name}</span>
+        <b>${item.score}점</b>
+      </div>
+    `).join('');
+  }
+</script>
+</body>
+</html>

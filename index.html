@@ -224,7 +224,7 @@
 
   // 점수 복사 기능
   copyBtn.addEventListener('click', () => {
-    const textToCopy = `🐰 [스피드 토끼 잡기] ${nickname}님의 최종 점수는 ${score}점 입니다! 너도 도전해봐! 🐰`;
+    const textToCopy = ` [스피드 고냥이 잡기] ${nickname}님의 최종 점수는 ${score}점 입니다! 너도 도전해 봐! 🐰`;
     
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(textToCopy).then(() => alert('점수가 클립보드에 복사되었습니다! 🎉'));
